@@ -1,0 +1,142 @@
+// LEARN: Prisma schema is the single source of truth for your database.
+// It defines your tables (models), columns (fields), and relations.
+// After editing, run: npm run db:migrate  → applies changes to Postgres
+// Run: npm run db:generate               → regenerates the TypeScript client
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── User ─────────────────────────────────────────────────────────────────────
+model User {
+  id           String   @id @default(cuid())     // cuid() = collision-resistant unique id
+  email        String   @unique
+  passwordHash String   @map("password_hash")    // @map = actual column name in DB
+  name         String
+  avatarUrl    String?  @map("avatar_url")       // ? = optional (nullable)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")  // auto-updates on every save
+
+  // Relations — Prisma uses these to generate JOIN queries
+  documents     Document[]
+  collaborators Collaborator[]
+  versions      DocumentVersion[]
+  refreshTokens RefreshToken[]
+  folders       Folder[]
+
+  @@map("users")  // actual table name in postgres
+}
+
+// ─── RefreshToken ─────────────────────────────────────────────────────────────
+// LEARN: We store refresh tokens in DB so we can revoke them (logout).
+// Access tokens are stateless (we just verify the signature).
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String   @map("user_id")
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}
+
+// ─── Folder ───────────────────────────────────────────────────────────────────
+model Folder {
+  id        String   @id @default(cuid())
+  name      String
+  ownerId   String   @map("owner_id")
+  parentId  String?  @map("parent_id")  // null = root folder
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  owner     User       @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  // Self-relation: a folder can have a parent folder (nested folders)
+  parent    Folder?    @relation("FolderNesting", fields: [parentId], references: [id])
+  children  Folder[]   @relation("FolderNesting")
+  documents Document[]
+
+  @@map("folders")
+}
+
+// ─── Document ─────────────────────────────────────────────────────────────────
+model Document {
+  id         String   @id @default(cuid())
+  title      String
+  content    String   @default("")  // raw markdown text
+  ownerId    String   @map("owner_id")
+  folderId   String?  @map("folder_id")
+  isPublic   Boolean  @default(false) @map("is_public")
+  shareToken String?  @unique @map("share_token")  // random token for public share link
+  tags       String[] // Postgres supports native arrays
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  owner         User              @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  folder        Folder?           @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  collaborators Collaborator[]
+  versions      DocumentVersion[]
+  attachments   Attachment[]
+
+  @@map("documents")
+}
+
+// ─── DocumentVersion ──────────────────────────────────────────────────────────
+// LEARN: Versioning = snapshot of content at a point in time.
+// We create a new version on every manual save or auto-save.
+model DocumentVersion {
+  id         String   @id @default(cuid())
+  documentId String   @map("document_id")
+  content    String
+  label      String?  // optional label like "v1.0" or "Before rewrite"
+  createdBy  String   @map("created_by")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [createdBy], references: [id])
+
+  @@map("document_versions")
+}
+
+// ─── Collaborator ─────────────────────────────────────────────────────────────
+model Collaborator {
+  id         String           @id @default(cuid())
+  documentId String           @map("document_id")
+  userId     String           @map("user_id")
+  role       CollaboratorRole @default(VIEWER)
+  createdAt  DateTime         @default(now()) @map("created_at")
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, userId])  // a user can only appear once per document
+  @@map("collaborators")
+}
+
+// ─── Attachment ───────────────────────────────────────────────────────────────
+model Attachment {
+  id         String   @id @default(cuid())
+  documentId String   @map("document_id")
+  filename   String
+  url        String   // Cloudinary public URL
+  publicId   String   @map("public_id")  // Cloudinary public_id (for deletion)
+  mimeType   String   @map("mime_type")
+  size       Int      // bytes
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@map("attachments")
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+enum CollaboratorRole {
+  VIEWER
+  EDITOR
+}

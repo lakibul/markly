@@ -1,0 +1,36 @@
+# docker-compose.yml
+# LEARN: Docker Compose lets you run services (Postgres, Redis, etc.) locally
+# without installing them on your machine. Each service runs in its own container.
+# Run: docker-compose up -d   → starts all services in background
+# Run: docker-compose down    → stops all services
+
+version: "3.9"
+
+services:
+  # PostgreSQL — our main database
+  postgres:
+    image: postgres:16-alpine
+    container_name: inkbase_postgres
+    environment:
+      POSTGRES_USER: inkbase
+      POSTGRES_PASSWORD: inkbase_secret
+      POSTGRES_DB: inkbase_dev
+    ports:
+      - "5432:5432"       # host:container — access via localhost:5432
+    volumes:
+      - postgres_data:/var/lib/postgresql/data   # persist data between restarts
+
+  # pgAdmin — visual database explorer (optional but very helpful for beginners)
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: inkbase_pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@inkbase.dev
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"         # visit http://localhost:5050 in browser
+    depends_on:
+      - postgres
+
+volumes:
+  postgres_data:

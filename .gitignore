@@ -1,0 +1,80 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build outputs
+dist/
+build/
+client/dist/
+server/dist/
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+**/.env
+**/.env.local
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Vite cache
+.vite/
+**/node_modules/.vite/
+
+# Prisma
+server/prisma/migrations/*/migration_lock.toml
+
+# File uploads (local storage)
+server/uploads/
+uploads/
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor directories
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Test coverage
+coverage/
+**/coverage/
+
+# Optional package manager files
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
+
+# Docker
+.docker/
+
+# Claude Code generated docs (not source)
+# ARCHITECTURE.md
+# CODEBASE_EXPLAINED.md
+# LEARN.md
+# PROJECT_PLAN.md
